@@ -63,7 +63,7 @@ whose size is determined when the object is allocated.
 
 #ifdef Py_TRACE_REFS
 /* Define pointers to support a doubly-linked list of all live heap objects. */
-/* MARK: 垃圾回收会用到?
+/* MARK: 垃圾回收会用到
 */
 #define _PyObject_HEAD_EXTRA            \
     struct _object *_ob_next;           \
@@ -105,14 +105,20 @@ whose size is determined when the object is allocated.
  * by hand.  Similarly every pointer to a variable-size Python object can,
  * in addition, be cast to PyVarObject*.
  */
+/* MARK: 定长对象定义
+*/
 typedef struct _object {
     PyObject_HEAD
 } PyObject;
 
+/* MARK: 变长对象定义
+*/
 typedef struct {
     PyObject_VAR_HEAD
 } PyVarObject;
 
+/* MARK: 获取对象信息
+*/
 #define Py_REFCNT(ob)           (((PyObject*)(ob))->ob_refcnt)
 #define Py_TYPE(ob)             (((PyObject*)(ob))->ob_type)
 #define Py_SIZE(ob)             (((PyVarObject*)(ob))->ob_size)
@@ -324,6 +330,7 @@ typedef PyObject *(*newfunc)(struct _typeobject *, PyObject *, PyObject *);
 typedef PyObject *(*allocfunc)(struct _typeobject *, Py_ssize_t);
 
 typedef struct _typeobject {
+    /* MARK: base, 注意, 是个变长对象*/
     PyObject_VAR_HEAD
     const char *tp_name; /* For printing, in format "<module>.<name>" */
     Py_ssize_t tp_basicsize, tp_itemsize; /* For allocation */
