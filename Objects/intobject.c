@@ -44,24 +44,40 @@ typedef struct _intblock PyIntBlock;
 static PyIntBlock *block_list = NULL;
 static PyIntObject *free_list = NULL;
 
+
+// 初始化一个PyIntBlock
 static PyIntObject *
 fill_free_list(void)
 {
     PyIntObject *p, *q;
+    // 建立一个新的block
     /* Python's object allocator isn't appropriate for large blocks. */
     p = (PyIntObject *) PyMem_MALLOC(sizeof(PyIntBlock));
+
+    // 建立失败(内存耗光了)
     if (p == NULL)
         return (PyIntObject *) PyErr_NoMemory();
+
+    // block_list指向新的PyIntBlock节点
     ((PyIntBlock *)p)->next = block_list;
     block_list = (PyIntBlock *)p;
+
     /* Link the int objects together, from rear to front, then return
        the address of the last int object in the block. */
+
+    // p=block里面 PyIntObjects数组头地址, q是尾地址
     p = &((PyIntBlock *)p)->objects[0];
     q = p + N_INTOBJECTS;
+
+    // 从尾部开始向首部移动, 利用对象里的ob_type指针(相当于使用这个字段, ob_type不作为原来的用途), 建立起一个单向链表
+    // 这个单向链表的头部是数组的最后一个
     while (--q > p)
         Py_TYPE(q) = (struct _typeobject *)(q-1);
-    Py_TYPE(q) = NULL;
+    Py_TYPE(q) = NULL; // 单向链表最后一个元素的next指向null
+
+    // 返回单向链表的头地址!!!
     return p + N_INTOBJECTS - 1;
+
 }
 
 #ifndef NSMALLPOSINTS
@@ -87,6 +103,9 @@ PyObject *
 PyInt_FromLong(long ival)
 {
     register PyIntObject *v;
+
+    /* MARK: 如果, 值在小整数范围内, 直接从小整数对象池获取得到对象
+    */
 #if NSMALLNEGINTS + NSMALLPOSINTS > 0
     if (-NSMALLNEGINTS <= ival && ival < NSMALLPOSINTS) {
         v = small_ints[ival + NSMALLNEGINTS];
@@ -100,15 +119,28 @@ PyInt_FromLong(long ival)
         return (PyObject *) v;
     }
 #endif
+
+    // 如果free_list还不存在, 或者满了
     if (free_list == NULL) {
+        // 新建一块PyIntBlock, 并将空闲空间链表头部地址给free_list
         if ((free_list = fill_free_list()) == NULL)
             return NULL;
     }
+
+    // 从free_list分出一个位置存放新的整数
+
     /* Inline PyObject_New */
+    // 使用单向链表头位置
     v = free_list;
+
+    // free_list指向单向链表下一个位置
     free_list = (PyIntObject *)Py_TYPE(v);
+
+    // 初始化对象, 类型为PyInt_type, 值为ival
     PyObject_INIT(v, &PyInt_Type);
     v->ob_ival = ival;
+
+    // 返回
     return (PyObject *) v;
 }
 
@@ -1454,6 +1486,8 @@ PyTypeObject PyInt_Type = {
     (freefunc)int_free,                         /* tp_free */
 };
 
+/* MARK: 小整数对象池初始化
+*/
 int
 _PyInt_Init(void)
 {
