@@ -94,6 +94,11 @@ PyString_FromStringAndSize(const char *str, Py_ssize_t size)
     if (str != NULL)
         Py_MEMCPY(op->ob_sval, str, size);
     op->ob_sval[size] = '\0';
+
+    /* MARK: 这里为什么用size作为判断?
+     * 好像是size=0或size=1, 第一次进来, nullstring和 characters[*str & UCHAR_MAX] 在上面赋值时都会失败
+     * size=0和size=1会进行interned
+    */
     /* share short strings */
     if (size == 0) {
         PyObject *t = (PyObject *)op;
@@ -1011,6 +1016,8 @@ string_length(PyStringObject *a)
     return Py_SIZE(a);
 }
 
+/* MARK: 字符串连接
+*/
 static PyObject *
 string_concat(register PyStringObject *a, register PyObject *bb)
 {
@@ -1582,6 +1589,8 @@ PyDoc_STRVAR(join__doc__,
 Return a string which is the concatenation of the strings in the\n\
 iterable.  The separator between elements is S.");
 
+/* MARK: join
+*/
 static PyObject *
 string_join(PyStringObject *self, PyObject *orig)
 {
